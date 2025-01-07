@@ -18,22 +18,34 @@ class Ship
   protected:
     char symbol;
     int livesCount = 3;
+    int positionX;
+    int positionY;
     // int killCount;
 };
 
 class MovingShip : public Ship
 {
+  public:
+    void move(int x, int y);
 };
 
 class ShootingShip : public Ship
 {
+  public:
+    void shoot(int x, int y);
 };
 
 class SeeingShip : public Ship
 {
+  public:
+    void look(int x, int y);
 };
 
-class RamShip : public Ship {};
+class RamShip : public Ship
+{
+  public:
+    void destroy(int x, int y);
+};
 
 class Battleship : public MovingShip, public ShootingShip
 {
