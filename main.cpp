@@ -1,8 +1,10 @@
 #include <iostream>
+#include <fstream>
 using namespace std;
 
 int main()
 {
+    // Added comment
     string myText;
     ifstream MyReadFile("game.txt");
 
