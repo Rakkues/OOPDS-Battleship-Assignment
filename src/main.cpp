@@ -6,7 +6,7 @@ using namespace std;
 
 int main()
 {
-    ifstream infile("/game.txt");
+    ifstream infile("game.txt");
     Game g(infile);
     vector<Team> teams;
 
