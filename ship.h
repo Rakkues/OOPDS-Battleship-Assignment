@@ -59,7 +59,7 @@ class Cruiser : public SeeingShip, public MovingShip, public RamShip
     int killCount;
 };
 
-class Destroyer : public Battleship, public Cruiser
+class Destroyer : public SeeingShip, public MovingShip, public ShootingShip, public RamShip
 {
   private:
     int killCount;
@@ -75,14 +75,14 @@ class Frigate : public ShootingShip
     int killCount;
 };
 
-class Corvette : public Frigate
+class Corvette : public ShootingShip
 {
   public:
     Corvette(Frigate &&frigate);
 };
 
-class Amphibious : public Battleship
+class Amphibious : public MovingShip, public ShootingShip
 {
 };
 
-class SuperShip : public Destroyer {};
+class SuperShip : public SeeingShip, public MovingShip, public ShootingShip, public RamShip {};
