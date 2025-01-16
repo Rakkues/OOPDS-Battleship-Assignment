@@ -20,12 +20,4 @@ int main()
     {
         teams[i].print();
     }
-
-    cout << endl;
-    cout << endl;
-
-    tuple<string, char, int> ship1 = teams[0].getShip(1);
-    cout << "Type = " << get<0>(ship1) << ", "
-         << "Symbol = " << get<1>(ship1) << ", "
-         << "Amount = " << get<2>(ship1) << endl;
 }
