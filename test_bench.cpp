@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include <algorithm>
 
 #include <sstream>
 #include <fstream>
@@ -72,7 +73,7 @@ public:
     }
 
     pair<int, int> get_location() { return *position; }
-    char get_symbol() { return symbol; }
+    char get_symbol() const { return symbol; }
     string get_team_name() { return team_name; }
 
     virtual void seeing(const vector<unique_ptr<Ship>> &ships) = 0;
@@ -80,15 +81,13 @@ public:
     virtual void shooting(vector<unique_ptr<Ship>> &ships) = 0;
     virtual void destroy(vector<unique_ptr<Ship>> &ships) = 0;
 
-    virtual void turn() = 0;
-
     virtual unique_ptr<Ship> upgrade() = 0;
 
     void killed(vector<unique_ptr<Ship>> &ships)
     {
         for (int i = 0; i < ships.size(); i++)
         {
-            if (*position == ships[i]->get_location())
+            if (*position == ships[i]->get_location() && symbol == ships[i]->get_symbol())
             {
                 ships.erase(ships.begin() + i);
             }
@@ -152,6 +151,7 @@ public:
 
     void seeing(const vector<unique_ptr<Ship>> &ships) override
     {
+        cout << "Seeing" << endl;
         closest_enemy.clear(); // Clear previous entries
 
         for (const auto &ship : ships)
@@ -171,8 +171,14 @@ public:
     }
     void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override
     {
+        cout << "Moving" << endl;
+
         int width = border.first;
         int height = border.second;
+
+        // Determine the direction to move
+        int newX = position->second;
+        int newY = position->first;
 
         if (!closest_enemy.empty())
         {
@@ -181,10 +187,6 @@ public:
 
             int deltaY = target.first - position->first;
             int deltaX = target.second - position->second;
-
-            // Determine the direction to move
-            int newX = position->second;
-            int newY = position->first;
 
             if (abs(deltaX) > abs(deltaY))
             {
@@ -202,45 +204,12 @@ public:
                 else
                     newY--; // Move up
             }
-
-            // Check if the new position is within the battlefield bounds
-            if (newX >= 0 && newX < width && newY >= 0 && newY < height)
-            {
-                // Check if the new position is an island
-                bool isIsland = false;
-                for (const auto &island : island_location)
-                {
-                    if (island.second == newX && island.first == newY)
-                    {
-                        isIsland = true;
-                        break;
-                    }
-                }
-
-                // Update the ship's position if it's not an island
-                if (!isIsland)
-                {
-                    position->second = newX;
-                    position->first = newY;
-                    cout << "Ship [" << symbol << "] moved to (" << position->first << ", " << position->second << ")." << endl;
-                }
-                else
-                {
-                    cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - island detected." << endl;
-                }
-            }
-            else
-            {
-                cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - out of bounds." << endl;
-            }
         }
         else
         {
             // Randomly select a direction (0: right, 1: left, 2: down, 3: up)
+            srand(time(0));
             int direction = rand() % 4;
-
-            int newX = position->second;
-            int newY = position->first;
 
             switch (direction)
             {
@@ -257,41 +226,42 @@ public:
                 newY--;
                 break;
             }
+        }
 
-            // Check if the new position is within the battlefield bounds
-            if (newX >= 0 && newX < width && newY >= 0 && newY < height)
+        // Check if the new position is within the battlefield bounds
+        if (newX >= 0 && newX < width && newY >= 0 && newY < height)
+        {
+            // Check if the new position is an island
+            bool isIsland = false;
+            for (const auto &island : island_location)
             {
-                // Check if the new position is an island
-                bool isIsland = false;
-                for (const auto &island : island_location)
+                if (island.second == newX && island.first == newY)
                 {
-                    if (island.second == newX && island.first == newY)
-                    {
-                        isIsland = true;
-                        break;
-                    }
+                    isIsland = true;
+                    break;
                 }
+            }
 
-                // Update the ship's position if it's not an island
-                if (!isIsland)
-                {
-                    position->second = newX;
-                    position->first = newY;
-                    cout << "Ship [" << symbol << "] moved to (" << position->first << ", " << position->second << ")." << endl;
-                }
-                else
-                {
-                    cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - island detected." << endl;
-                }
+            // Update the ship's position if it's not an island
+            if (!isIsland)
+            {
+                position->second = newX;
+                position->first = newY;
+                cout << "Ship [" << symbol << "] moved to (" << position->first << ", " << position->second << ")." << endl;
             }
             else
             {
-                cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - out of bounds." << endl;
+                cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - island detected." << endl;
             }
+        }
+        else
+        {
+            cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - out of bounds." << endl;
         }
     }
     void shooting(vector<unique_ptr<Ship>> &ships) override
     {
+        cout << "Shooting" << endl;
         if (!closest_enemy.empty())
         {
             // Iterate over all detected enemies
@@ -336,25 +306,21 @@ public:
     }
     void destroy(vector<unique_ptr<Ship>> &ships) override
     {
-        // Check if the current position matches any other ship's position
-        for (auto &ship : ships)
+        cout << "Destroy" << endl;
+
+        for (size_t i = 0; i < ships.size(); ++i)
         {
-            if (ship->get_location() == *position && ship.get() != this) // Avoid self-collision
+            if (ships[i]->get_location() == *position && ships[i].get() != this) // Avoid self-collision
             {
-                // Destroy the other ship
-                ship->set_health(0);
-                ship->killed(ships);
+                cout << "Collision detected with ship [" << ships[i]->get_symbol() << "]" << endl;
+                cout << "Ship [" << symbol << "] rammed and destroyed Ship [" << ships[i]->get_symbol() << "]!" << endl;
+                ships[i]->set_health(0);
+                ships[i]->killed(ships);
 
-                // Increase the ramming ship's kill count
-                update_kill_count();
-
-                cout << "Ship [" << symbol << "] rammed and destroyed Ship [" << ship->get_symbol() << "]!" << endl;
                 break; // Exit after the first collision
             }
         }
     }
-
-    void turn() override {}
 
     unique_ptr<Ship> upgrade() override { return nullptr; }
 };
@@ -527,16 +493,11 @@ public:
         }
     }
 
-    /* Print functions
-    1. Print fleet
-    2. print arena
-    3. print battlefield
-    4. print island location
-    5. print both team locaiton
-    */
     // getters
     pair<int, int> get_border_limit() { return make_pair(width, height); }
     vector<pair<int, int>> get_island_location() { return island_location; }
+
+    vector<Team> &get_teams() { return teams; }
 
     // instantiators
     void generate_ships_locations()
@@ -599,18 +560,16 @@ public:
     }
 
     // printer
-    void print_ships_location()
+    void print_ships_location(vector<unique_ptr<Ship>> &ships)
     {
         cout << "printing all the ships locations" << endl;
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < ships.size(); i++)
         {
-            vector<pair<int, int>> &ships_location = teams[i].get_ships_location();
-
-            for (int j = 0; j < ships_location.size(); j++)
-            {
-                cout << "(" << ships_location[j].first << ", " << ships_location[j].second << ")|";
-            }
+            pair<int, int> ships_location = ships[i]->get_location();
             cout << endl;
+            cout << "Team " << ships[i]->get_team_name() << ": "
+                 << "[" << ships[i]->get_symbol() << "] : "
+                 << "(" << ships_location.first << ", " << ships_location.second << ")|";
         }
     }
     void print_battlefield(vector<unique_ptr<Ship>> &ships)
@@ -632,25 +591,23 @@ public:
         {
             for (int j = 0; j < width; j++)
             {
-                // Check if the current position is in team1
-                bool is_team1 = false;
-                for (auto &pos : teams[0].get_ships_location())
-                {
-                    if (pos.first == j && pos.second == i)
-                    {
-                        is_team1 = true;
-                        break;
-                    }
-                }
 
-                // Check if the current position is in team2
+                bool is_team1 = false;
                 bool is_team2 = false;
-                for (auto &pos : teams[1].get_ships_location())
+
+                for (int index = 0; index < ships.size(); index++)
                 {
-                    if (pos.first == j && pos.second == i)
+                    pair<int, int> loc = ships[index]->get_location();
+                    if (loc.first == j && loc.second == i)
                     {
-                        is_team2 = true;
-                        break;
+                        if (ships[index]->get_team_name() == teams[0].get_team_title())
+                        {
+                            is_team1 = true;
+                        }
+                        else
+                        {
+                            is_team2 = true;
+                        }
                     }
                 }
 
@@ -687,17 +644,12 @@ int main()
     gr.generate_ships_locations();
     gr.instantiate_ships(ships);
 
-    gr.print_ships_location();
+    gr.print_ships_location(ships);
     gr.print_battlefield(ships);
 
     int iterations = 0;
     while (ships.size() != 1)
     {
-        cout << endl
-             << endl
-             << "Round: " << iterations << endl
-             << endl;
-
         Sleep(500);
         for (int i = 0; i < ships.size(); i++)
         {
@@ -706,13 +658,18 @@ int main()
             ships[i]->shooting(ships);
             ships[i]->destroy(ships);
         }
-        gr.print_ships_location();
+        gr.print_ships_location(ships);
         gr.print_battlefield(ships);
 
         // insert into .txt
 
         iterations++;
     }
+
+    cout << "finished" << endl;
+
+    gr.print_ships_location(ships);
+    gr.print_battlefield(ships);
 
     // trackers
 
