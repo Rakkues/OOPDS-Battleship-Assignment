@@ -10,6 +10,8 @@
 #include <tuple>
 #include <utility>
 
+#include <cstdlib>
+#include <ctime>
 #include <windows.h>
 
 #define RESET "\033[0m"
@@ -138,6 +140,10 @@ public:
 };
 
 // Concrete class for ship types
+
+/* Super Ship TODO:
+
+*/
 class SuperShip : public SeeingShip, MovingShip, ShootingShip, RammingShip
 {
 public:
@@ -208,7 +214,6 @@ public:
         else
         {
             // Randomly select a direction (0: right, 1: left, 2: down, 3: up)
-            srand(time(0));
             int direction = rand() % 4;
 
             switch (direction)
@@ -310,7 +315,7 @@ public:
 
         for (size_t i = 0; i < ships.size(); ++i)
         {
-            if (ships[i]->get_location() == *position && ships[i].get() != this) // Avoid self-collision
+            if (ships[i]->get_location() == *position && ships[i].get() != this && ships[i]->get_team_name() != this->get_team_name()) // Avoid self-collision & team mates
             {
                 cout << "Collision detected with ship [" << ships[i]->get_symbol() << "]" << endl;
                 cout << "Ship [" << symbol << "] rammed and destroyed Ship [" << ships[i]->get_symbol() << "]!" << endl;
@@ -323,6 +328,401 @@ public:
     }
 
     unique_ptr<Ship> upgrade() override { return nullptr; }
+};
+
+/* Destroyer TODO:
+
+*/
+class Destroyer : public SeeingShip, MovingShip, ShootingShip, RammingShip
+{
+public:
+    Destroyer(string team, char sym, pair<int, int> *position)
+        : SeeingShip(team, sym, position), MovingShip(team, sym, position),
+          ShootingShip(team, sym, position), RammingShip(team, sym, position),
+          Ship(team, sym, position)
+    {
+        ship_type = "Destroyer";
+    }
+
+    void seeing(const vector<unique_ptr<Ship>> &ships) override {}
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override {}
+    void shooting(vector<unique_ptr<Ship>> &ships) override {}
+    void destroy(vector<unique_ptr<Ship>> &ships) override {}
+
+    unique_ptr<Ship> upgrade() override
+    {
+        if (kill_count >= 3)
+        { // Upgrade condition for Cruiser
+            cout << "Destroyer is upgrading to SuperShip!" << endl;
+            return unique_ptr<Ship>(new SuperShip(team_name, symbol, position));
+        }
+        return nullptr; // No upgrade
+    }
+};
+
+class BattleShip : public SeeingShip, MovingShip, ShootingShip, RammingShip
+{
+public:
+    BattleShip(string team, char sym, pair<int, int> *position)
+        : SeeingShip(team, sym, position), MovingShip(team, sym, position),
+          ShootingShip(team, sym, position), RammingShip(team, sym, position),
+          Ship(team, sym, position)
+    {
+        ship_type = "Battleship";
+    }
+
+    void seeing(const vector<unique_ptr<Ship>> &ships) override
+    {
+        cout << "Seeing" << endl;
+        closest_enemy.clear(); // Clear previous entries
+
+        for (const auto &ship : ships)
+        {
+            if (ship->get_team_name() != team_name) // Check if the ship is an enemy
+            {
+                pair<int, int> enemyPosition = ship->get_location();
+                int distance = abs(enemyPosition.first - position->first) + abs(enemyPosition.second - position->second);
+
+                if (distance <= 5) // If the enemy is within 5 blocks
+                {
+                    cout << "Enemy Located" << endl;
+                    closest_enemy.push_back(enemyPosition);
+                }
+            }
+        }
+    }
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override
+    {
+        cout << "Moving" << endl;
+
+        int width = border.first;
+        int height = border.second;
+
+        // Determine the direction to move
+        int newX = position->second;
+        int newY = position->first;
+
+        if (!closest_enemy.empty())
+        {
+            // Move towards the first enemy in the closest_enemy vector
+            pair<int, int> target = closest_enemy[0];
+
+            int deltaY = target.first - position->first;
+            int deltaX = target.second - position->second;
+
+            if (abs(deltaX) > abs(deltaY))
+            {
+                // Move horizontally
+                if (deltaX > 0)
+                    newX++; // Move right
+                else
+                    newX--; // Move left
+            }
+            else
+            {
+                // Move vertically
+                if (deltaY > 0)
+                    newY++; // Move down
+                else
+                    newY--; // Move up
+            }
+        }
+        else
+        {
+            // Randomly select a direction (0: right, 1: left, 2: down, 3: up)
+            int direction = rand() % 4;
+
+            switch (direction)
+            {
+            case 0: // Right
+                newX++;
+                break;
+            case 1: // Left
+                newX--;
+                break;
+            case 2: // Down
+                newY++;
+                break;
+            case 3: // Up
+                newY--;
+                break;
+            }
+        }
+
+        // Check if the new position is within the battlefield bounds
+        if (newX >= 0 && newX < width && newY >= 0 && newY < height)
+        {
+            // Check if the new position is an island
+            bool isIsland = false;
+            for (const auto &island : island_location)
+            {
+                if (island.second == newX && island.first == newY)
+                {
+                    isIsland = true;
+                    break;
+                }
+            }
+
+            // Update the ship's position if it's not an island
+            if (!isIsland)
+            {
+                position->second = newX;
+                position->first = newY;
+                cout << "Ship [" << symbol << "] moved to (" << position->first << ", " << position->second << ")." << endl;
+            }
+            else
+            {
+                cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - island detected." << endl;
+            }
+        }
+        else
+        {
+            cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - out of bounds." << endl;
+        }
+    }
+    void shooting(vector<unique_ptr<Ship>> &ships) override {}
+    void destroy(vector<unique_ptr<Ship>> &ships) override {}
+
+    unique_ptr<Ship> upgrade() override
+    {
+        if (hit_count >= 4)
+        { // Upgrade condition for BattleShip
+            cout << "BattleShip is upgrading to Destroyer!" << endl;
+            return unique_ptr<Ship>(new Destroyer(team_name, symbol, position));
+        }
+        return nullptr; // No upgrade
+    }
+};
+
+class Cruiser : public SeeingShip, MovingShip, ShootingShip, RammingShip
+{
+public:
+    Cruiser(string team, char sym, pair<int, int> *position)
+        : SeeingShip(team, sym, position), MovingShip(team, sym, position),
+          ShootingShip(team, sym, position), RammingShip(team, sym, position),
+          Ship(team, sym, position)
+    {
+        ship_type = "Cruiser";
+    }
+
+    void seeing(const vector<unique_ptr<Ship>> &ships) override
+    {
+        closest_enemy.clear(); // Clear previous entries
+
+        for (const auto &ship : ships)
+        {
+            if (ship->get_team_name() != team_name) // Check if the ship is an enemy
+            {
+                pair<int, int> enemyPosition = ship->get_location();
+                int distance = abs(enemyPosition.first - position->first) + abs(enemyPosition.second - position->second);
+
+                if (distance <= 2) // If the enemy is within 5 blocks
+                {
+                    cout << "Enemy Located" << endl;
+                    closest_enemy.push_back(enemyPosition);
+                }
+            }
+        }
+    }
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override
+    {
+        cout << "Moving" << endl;
+
+        int width = border.first;
+        int height = border.second;
+
+        // Determine the direction to move
+        int newX = position->second;
+        int newY = position->first;
+
+        if (!closest_enemy.empty())
+        {
+            // Move towards the first enemy in the closest_enemy vector
+            pair<int, int> target = closest_enemy[0];
+
+            int deltaY = target.first - position->first;
+            int deltaX = target.second - position->second;
+
+            if (abs(deltaX) > abs(deltaY))
+            {
+                // Move horizontally
+                if (deltaX > 0)
+                    newX++; // Move right
+                else
+                    newX--; // Move left
+            }
+            else
+            {
+                // Move vertically
+                if (deltaY > 0)
+                    newY++; // Move down
+                else
+                    newY--; // Move up
+            }
+        }
+        else
+        {
+            // Randomly select a direction (0: right, 1: left, 2: down, 3: up)
+            int direction = rand() % 4;
+
+            switch (direction)
+            {
+            case 0: // Right
+                newX++;
+                break;
+            case 1: // Left
+                newX--;
+                break;
+            case 2: // Down
+                newY++;
+                break;
+            case 3: // Up
+                newY--;
+                break;
+            }
+        }
+
+        // Check if the new position is within the battlefield bounds
+        if (newX >= 0 && newX < width && newY >= 0 && newY < height)
+        {
+            // Check if the new position is an island
+            bool isIsland = false;
+            for (const auto &island : island_location)
+            {
+                if (island.second == newX && island.first == newY)
+                {
+                    isIsland = true;
+                    break;
+                }
+            }
+
+            // Update the ship's position if it's not an island
+            if (!isIsland)
+            {
+                position->second = newX;
+                position->first = newY;
+                cout << "Ship [" << symbol << "] moved to (" << position->first << ", " << position->second << ")." << endl;
+            }
+            else
+            {
+                cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - island detected." << endl;
+            }
+        }
+        else
+        {
+            cout << "Ship [" << symbol << "] cannot move to (" << newX << ", " << newY << ") - out of bounds." << endl;
+        }
+    }
+    void shooting(vector<unique_ptr<Ship>> &ships) override {}
+    void destroy(vector<unique_ptr<Ship>> &ships) override
+    {
+        cout << "Destroy" << endl;
+
+        for (size_t i = 0; i < ships.size(); ++i)
+        {
+            if (ships[i]->get_location() == *position && ships[i].get() != this && ships[i]->get_team_name() != this->get_team_name()) // Avoid self-collision & team mates
+            {
+                cout << "Collision detected with ship [" << ships[i]->get_symbol() << "]" << endl;
+                cout << "Ship [" << symbol << "] rammed and destroyed Ship [" << ships[i]->get_symbol() << "]!" << endl;
+                ships[i]->set_health(0);
+                ships[i]->killed(ships);
+
+                break; // Exit after the first collision
+            }
+        }
+    }
+
+    unique_ptr<Ship> upgrade() override
+    {
+        if (kill_count >= 3)
+        { // Upgrade condition for Cruiser
+            cout << "Cruiser is upgrading to Destroyer!" << endl;
+            return unique_ptr<Ship>(new Destroyer(team_name, symbol, position));
+        }
+        return nullptr; // No upgrade
+    }
+};
+
+/* Corvette TODO:
+
+*/
+class Corvette : public SeeingShip, MovingShip, ShootingShip, RammingShip
+{
+public:
+    Corvette(string team, char sym, pair<int, int> *position)
+        : SeeingShip(team, sym, position), MovingShip(team, sym, position),
+          ShootingShip(team, sym, position), RammingShip(team, sym, position),
+          Ship(team, sym, position)
+    {
+        ship_type = "Corvette";
+    }
+
+    void seeing(const vector<unique_ptr<Ship>> &ships) override {}
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override {}
+    void shooting(vector<unique_ptr<Ship>> &ships) override {}
+    void destroy(vector<unique_ptr<Ship>> &ships) override {}
+
+    unique_ptr<Ship> upgrade() override { return nullptr; }
+};
+
+/* Frigate TODO:
+
+*/
+class Frigate : public SeeingShip, MovingShip, ShootingShip, RammingShip
+{
+public:
+    Frigate(string team, char sym, pair<int, int> *position)
+        : SeeingShip(team, sym, position), MovingShip(team, sym, position),
+          ShootingShip(team, sym, position), RammingShip(team, sym, position),
+          Ship(team, sym, position)
+    {
+        ship_type = "Frigate";
+    }
+
+    void seeing(const vector<unique_ptr<Ship>> &ships) override {}
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override {}
+    void shooting(vector<unique_ptr<Ship>> &ships) override {}
+    void destroy(vector<unique_ptr<Ship>> &ships) override {}
+
+    unique_ptr<Ship> upgrade() override
+    {
+        if (kill_count >= 3)
+        { // Upgrade condition for Cruiser
+            cout << "Frigate is upgrading to Corvette!" << endl;
+            return unique_ptr<Ship>(new Corvette(team_name, symbol, position));
+        }
+        return nullptr; // No upgrade
+    }
+};
+
+/* Amphibious TODO:
+
+*/
+class Amphibious : public SeeingShip, MovingShip, ShootingShip, RammingShip
+{
+public:
+    Amphibious(string team, char sym, pair<int, int> *position)
+        : SeeingShip(team, sym, position), MovingShip(team, sym, position),
+          ShootingShip(team, sym, position), RammingShip(team, sym, position),
+          Ship(team, sym, position)
+    {
+        ship_type = "Amphibious";
+    }
+
+    void seeing(const vector<unique_ptr<Ship>> &ships) override {}
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override {}
+    void shooting(vector<unique_ptr<Ship>> &ships) override {}
+    void destroy(vector<unique_ptr<Ship>> &ships) override {}
+
+    unique_ptr<Ship> upgrade() override
+    {
+        if (kill_count >= 3)
+        { // Upgrade condition for Cruiser
+            cout << "Amphibious is upgrading to SuperShip!" << endl;
+            return unique_ptr<Ship>(new SuperShip(team_name, symbol, position));
+        }
+        return nullptr; // No upgrade
+    }
 };
 
 //---------------------------------------------------------------------------------
@@ -391,11 +791,6 @@ public:
 
     vector<tuple<string, char, int>> &get_ships() { return ships; }
     vector<pair<int, int>> &get_ships_location() { return ships_location; }
-
-    /* print functions
-    1. print ships (fleet), all the ships types, symbols and the respective quantity
-    2. print the locations of each team's ship
-    */
 };
 
 int Team::total_ships = 0;
@@ -505,8 +900,6 @@ public:
         cout << "generating locations for all the ships" << endl;
 
         int unique_positions_index = 0;
-
-        srand(time(0));
 
         set<pair<int, int>> used_locations(island_location.begin(), island_location.end());
         vector<pair<int, int>> unique_positions;
@@ -636,6 +1029,8 @@ public:
 
 int main()
 {
+    srand(time(0));
+
     ifstream document("main.txt");
     GameReader gr(document);
 
