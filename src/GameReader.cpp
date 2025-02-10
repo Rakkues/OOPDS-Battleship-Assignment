@@ -1,8 +1,31 @@
+/**********|**********|**********|
+Program: GameReader.cpp / GameReader.h
+Course: Data Structures and Algorithms
+Trimester: 2430
+Lecture Section: TC1L
+Tutorial Section: TT2L
+Name: Danish Zafrin bin Mohd Mohzani
+ID: 241UA240TD
+Email: danish.zafrin.mohd@student.mmu.edu.my
+Phone: 018-919 6242
+Name: Muhammad Anas bin Khairul Azman
+ID: 241UC2401Z
+Email: muhammad.anas.khairul@student.mmu.edu.my
+Phone: 019-210 3461
+Name: Muhammad Qaid Danial bin Jamaludin
+ID: 241UC2415L
+Email: muhammad.qaid.danial@student.mmu.edu.my
+Phone: 012-951 9400
+Name: Raja Izzat bin Raja Kamaruzaman
+ID: 241UC240KW
+Email: raja.izzat.raja@student.mmu.edu.my
+Phone: 012-674 8544
+**********|**********|**********/
+
 #include "GameReader.h"
 #include "Ship.h"
 #include <cstdlib>
 #include <ctime>
-
 #define RESET "\033[0m"
 #define BLUE "\033[34m"
 #define RED "\033[31m"
