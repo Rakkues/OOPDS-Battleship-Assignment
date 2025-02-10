@@ -1,88 +1,169 @@
-/**********|**********|**********|
-Program: main.cpp / ship.h 
-Course: Data Structures and Algorithms
-Trimester: 2430
-Name: Muhammad Anas bin Khairul Azman
-ID: 241UC2401Z
-Lecture Section: TC1L
-Tutorial Section: TT1L
-Email: muhammad.anas.khairul@student.mmu.edu.my
-Phone: 019-2103461
-**********|**********|**********/
+#ifndef SHIP_H
+#define SHIP_H
 
 #include <iostream>
+#include <memory>
+#include <vector>
+#include <utility>
+#include <string>
+#include <algorithm>
+#include <cstdlib>
+#include <ctime>
+
 using namespace std;
 
 class Ship
 {
-  protected:
+protected:
+    int id;
+    string team_name;
+    string ship_type;
+    int kill_count = 0;
+    int hit_count = 0;
     char symbol;
-    int livesCount = 3;
-    int positionX;
-    int positionY;
-    // int killCount;
+    int health = 3;
+    pair<int, int> *position;
+    vector<pair<int, int>> closest_enemy;
+    bool marked_for_removal = false;
+
+public:
+    Ship(int id, string team, char sym, pair<int, int> *position);
+    Ship(Ship &&other) noexcept;
+    Ship &operator=(Ship &&other) noexcept;
+    virtual ~Ship();
+
+    void show_status() const;
+    pair<int, int> get_location();
+    char get_symbol() const;
+    string get_team_name();
+    int get_id();
+    virtual void seeing(const vector<unique_ptr<Ship>> &ships) = 0;
+    virtual void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) = 0;
+    virtual void shooting(vector<unique_ptr<Ship>> &ships) = 0;
+    virtual void destroy(vector<unique_ptr<Ship>> &ships) = 0;
+    virtual unique_ptr<Ship> upgrade() = 0;
+
+    void mark_for_removal();
+    bool is_marked_for_removal() const;
+    void killed();
+    string get_ship_type();
+    void set_ship_type(string type);
+    void set_health(int hlth);
+    int get_health();
+    int get_kill_count();
+    void update_kill_count();
+    void reset_kill_count();
+    int get_hit_count();
+    void update_hit_count();
+    void reset_hit_count();
 };
 
-class MovingShip : public Ship
+class SeeingShip : virtual public Ship
 {
-  public:
-    void move(int x, int y);
+public:
+    SeeingShip(int id, string team, char sym, pair<int, int> *position);
+    virtual void seeing(const vector<unique_ptr<Ship>> &ships) = 0;
 };
 
-class ShootingShip : public Ship
+class MovingShip : virtual public Ship
 {
-  public:
-    void shoot(int x, int y);
+public:
+    MovingShip(int id, string team, char sym, pair<int, int> *position);
+    virtual void moving(pair<int, int> borders, const vector<pair<int, int>> &island_location) = 0;
 };
 
-class SeeingShip : public Ship
+class ShootingShip : virtual public Ship
 {
-  public:
-    void look(int x, int y);
+public:
+    ShootingShip(int id, string team, char sym, pair<int, int> *position);
+    virtual void shooting(vector<unique_ptr<Ship>> &ships) = 0;
 };
 
-class RamShip : public Ship
+class RammingShip : virtual public Ship
 {
-  public:
-    void destroy(int x, int y);
+public:
+    RammingShip(int id, string team, char sym, pair<int, int> *position);
+    virtual void destroy(vector<unique_ptr<Ship>> &ships) = 0;
 };
 
-class Battleship : public MovingShip, public ShootingShip
+class SuperShip : public SeeingShip, MovingShip, ShootingShip, RammingShip
 {
-  private:
-    int killCount;
+public:
+    SuperShip(int id, string team, char sym, pair<int, int> *position);
+    void seeing(const vector<unique_ptr<Ship>> &ships) override;
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override;
+    void shooting(vector<unique_ptr<Ship>> &ships) override;
+    void destroy(vector<unique_ptr<Ship>> &ships) override;
+    unique_ptr<Ship> upgrade() override;
 };
 
-class Cruiser : public SeeingShip, public MovingShip, public RamShip
+class Destroyer : public SeeingShip, MovingShip, ShootingShip, RammingShip
 {
-  private:
-    int killCount;
+public:
+    Destroyer(int id, string team, char sym, pair<int, int> *position);
+    void seeing(const vector<unique_ptr<Ship>> &ships) override;
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override;
+    void shooting(vector<unique_ptr<Ship>> &ships) override;
+    void destroy(vector<unique_ptr<Ship>> &ships) override;
+    unique_ptr<Ship> upgrade() override;
 };
 
-class Destroyer : public SeeingShip, public MovingShip, public ShootingShip, public RamShip
+class BattleShip : public SeeingShip, MovingShip, ShootingShip, RammingShip
 {
-  private:
-    int killCount;
-
-  public:
-    Destroyer(Battleship &&battleship);
-    Destroyer(Cruiser &&cruiser);
+public:
+    BattleShip(int id, string team, char sym, pair<int, int> *position);
+    void seeing(const vector<unique_ptr<Ship>> &ships) override;
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override;
+    void shooting(vector<unique_ptr<Ship>> &ships) override;
+    void destroy(vector<unique_ptr<Ship>> &ships) override;
+    unique_ptr<Ship> upgrade() override;
 };
 
-class Frigate : public ShootingShip
+class Cruiser : public SeeingShip, MovingShip, ShootingShip, RammingShip
 {
-  private:
-    int killCount;
+public:
+    Cruiser(int id, string team, char sym, pair<int, int> *position);
+    void seeing(const vector<unique_ptr<Ship>> &ships) override;
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override;
+    void shooting(vector<unique_ptr<Ship>> &ships) override;
+    void destroy(vector<unique_ptr<Ship>> &ships) override;
+    unique_ptr<Ship> upgrade() override;
 };
 
-class Corvette : public ShootingShip
+class Corvette : public SeeingShip, MovingShip, ShootingShip, RammingShip
 {
-  public:
-    Corvette(Frigate &&frigate);
+public:
+    Corvette(int id, string team, char sym, pair<int, int> *position);
+    void seeing(const vector<unique_ptr<Ship>> &ships) override;
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override;
+    void shooting(vector<unique_ptr<Ship>> &ships) override;
+    void destroy(vector<unique_ptr<Ship>> &ships) override;
+    unique_ptr<Ship> upgrade() override;
 };
 
-class Amphibious : public MovingShip, public ShootingShip
+class Frigate : public SeeingShip, MovingShip, ShootingShip, RammingShip
 {
+private:
+    int shooting_index = 0;
+
+public:
+    Frigate(int id, string team, char sym, pair<int, int> *position);
+    void seeing(const vector<unique_ptr<Ship>> &ships) override;
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override;
+    void shooting(vector<unique_ptr<Ship>> &ships) override;
+    void destroy(vector<unique_ptr<Ship>> &ships) override;
+    unique_ptr<Ship> upgrade() override;
 };
 
-class SuperShip : public SeeingShip, public MovingShip, public ShootingShip, public RamShip {};
+class Amphibious : public SeeingShip, MovingShip, ShootingShip, RammingShip
+{
+public:
+    Amphibious(int id, string team, char sym, pair<int, int> *position);
+    void seeing(const vector<unique_ptr<Ship>> &ships) override;
+    void moving(pair<int, int> border, const vector<pair<int, int>> &island_location) override;
+    void shooting(vector<unique_ptr<Ship>> &ships) override;
+    void destroy(vector<unique_ptr<Ship>> &ships) override;
+    unique_ptr<Ship> upgrade() override;
+};
+
+#endif // SHIP_H
